@@ -1,15 +1,32 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Button, Container } from "react-bootstrap";
-
-import { collection, addDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
 import { firestore } from "../../database/firebaseResources";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 
 const JobPosting = () => {
   const [jobTitle, setJobTitle] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const navigate = useNavigate();
+  const { jobID } = useParams(); // Get the jobID from the URL
+
+  useEffect(() => {
+    const fetchJobDetails = async () => {
+      if (jobID) {
+        const docRef = doc(firestore, "jobPostings", jobID);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setJobTitle(docSnap.data().title);
+          setJobDescription(docSnap.data().description);
+        } else {
+          console.log("No such document!");
+        }
+      }
+    };
+
+    fetchJobDetails();
+  }, [jobID]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -18,26 +35,40 @@ const JobPosting = () => {
 
     if (user) {
       try {
-        await addDoc(collection(firestore, "jobPostings"), {
-          employerId: user.uid, // Link to the employer's user document
-          title: jobTitle,
-          description: jobDescription,
-          createdAt: new Date(), // Optional: Helps in sorting or filtering jobs
-        });
-        alert("Job posted successfully");
-        navigate("/profile"); // Redirect or navigate to a confirmation page
+        if (jobID) {
+          // Update existing job posting
+          const jobRef = doc(firestore, "jobPostings", jobID);
+          await setDoc(
+            jobRef,
+            {
+              title: jobTitle,
+              description: jobDescription,
+              updatedAt: new Date(),
+            },
+            { merge: true }
+          );
+        } else {
+          // Create new job posting
+          await addDoc(collection(firestore, "jobPostings"), {
+            employerId: user.uid,
+            title: jobTitle,
+            description: jobDescription,
+            createdAt: new Date(),
+          });
+        }
+        navigate("/profile");
       } catch (error) {
-        console.error("Error posting job: ", error);
-        alert("Failed to post job");
+        console.error("Error saving job: ", error);
+        alert("Failed to save job");
       }
     } else {
-      alert("You must be signed in to post a job");
+      alert("You must be signed in");
     }
   };
 
   return (
     <Container className="mt-5">
-      <h1>Post a Job</h1>
+      <h1>{jobID ? "Edit Job Posting" : "Post a New Job"}</h1>
       <Form onSubmit={handleSubmit}>
         <Form.Group className="mb-3" controlId="jobTitle">
           <Form.Label>Job Title</Form.Label>
@@ -63,7 +94,7 @@ const JobPosting = () => {
         </Form.Group>
 
         <Button variant="primary" type="submit">
-          Post Job
+          {jobID ? "Update Job" : "Post Job"}
         </Button>
       </Form>
     </Container>

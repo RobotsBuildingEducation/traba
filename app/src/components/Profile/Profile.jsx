@@ -52,7 +52,7 @@ const Profile = () => {
 
   const fetchJobPostingsForEmployees = async () => {
     setLoadingJobs(true);
-    let queryConstraints = [orderBy("createdAt"), limit(LIMIT)];
+    let queryConstraints = [orderBy("createdAt", "desc"), limit(LIMIT)];
     if (lastVisible) {
       queryConstraints.push(startAfter(lastVisible));
     }
@@ -73,11 +73,11 @@ const Profile = () => {
     }
 
     const newPostings = documentSnapshots.docs.map((doc) => ({
-      id: doc.id,
+      docID: doc.id,
       ...doc.data(),
     }));
 
-    setJobPostings((prevPostings) => [...prevPostings, ...newPostings]);
+    setJobPostings((prevPostings) => [...newPostings]);
     setLoadingJobs(false);
     setEditMode(false);
   };
@@ -144,32 +144,34 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    const auth = getAuth();
+    if (!editMode) {
+      const auth = getAuth();
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const userDocRef = doc(firestore, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data());
-          if (userDoc.data()?.userRole === "employee") {
-            fetchJobPostingsForEmployees();
-          } else if (userDoc.data()?.userRole === "employer") {
-            getPostings(user);
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          const userDocRef = doc(firestore, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            setUserProfile(userDoc.data());
+            if (userDoc.data()?.userRole === "employee") {
+              fetchJobPostingsForEmployees();
+            } else if (userDoc.data()?.userRole === "employer") {
+              getPostings(user);
+            }
+          } else {
+            // Handle case where user is authenticated but no profile data is found
           }
         } else {
-          // Handle case where user is authenticated but no profile data is found
+          // User is not logged in, navigate to login page or handle accordingly
+          navigate("/");
         }
-      } else {
-        // User is not logged in, navigate to login page or handle accordingly
-        navigate("/");
-      }
-      setLoading(false); // Set loading to false here to ensure it's always updated appropriately
-    });
+        setLoading(false); // Set loading to false here to ensure it's always updated appropriately
+      });
 
-    // Clean up the listener when the component unmounts
-    return () => unsubscribe();
-  }, [navigate]);
+      // Clean up the listener when the component unmounts
+      return () => unsubscribe();
+    }
+  }, [navigate, editMode]);
 
   console.log("jobPostings", jobPostings);
   console.log("editmode", editMode);
@@ -227,8 +229,13 @@ const Profile = () => {
               <JobList>
                 {jobPostings.map((posting) => (
                   <JobPosting key={posting.id}>
-                    <JobTitle>{posting.title}</JobTitle>
-                    <JobDescription>{posting.description}</JobDescription>
+                    <Link
+                      to={`/job/${posting.docID}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <JobTitle>{posting.title}</JobTitle>
+                      <JobDescription>{posting.description}</JobDescription>
+                    </Link>
                   </JobPosting>
                 ))}
               </JobList>
