@@ -24,7 +24,7 @@ function App() {
         }
         navigate("/profile");
       } else {
-        navigate("/login"); // Adjust as needed
+        navigate("/"); // Adjust as needed
       }
       setIsLoading(false); // Set loading to false after handling auth state
     });
@@ -38,7 +38,7 @@ function App() {
 
   return (
     <div>
-      Hello world
+      Find reputable and good work
       <AuthDisplay />
     </div>
   );
