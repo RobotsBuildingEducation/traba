@@ -11,6 +11,9 @@ import {
   query,
   where,
   getDocs,
+  orderBy,
+  limit,
+  startAfter,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { firestore } from "../../database/firebaseResources";
@@ -37,11 +40,47 @@ export const JobDescription = styled.p`
 `;
 
 const Profile = () => {
+  const LIMIT = 3;
   const [userProfile, setUserProfile] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true); // Add a loading state
   const [jobPostings, setJobPostings] = useState([]);
+  const [lastVisible, setLastVisible] = useState(null);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
+
+  const fetchJobPostingsForEmployees = async () => {
+    setLoadingJobs(true);
+    let queryConstraints = [orderBy("createdAt"), limit(LIMIT)];
+    if (lastVisible) {
+      queryConstraints.push(startAfter(lastVisible));
+    }
+    const queryRef = query(
+      collection(firestore, "jobPostings"),
+      ...queryConstraints
+    );
+
+    const documentSnapshots = await getDocs(queryRef);
+    if (documentSnapshots.docs.length < LIMIT) {
+      setHasMore(false); // No more documents to fetch
+    } else {
+      setHasMore(true);
+      // Get the last visible document for the next query
+      const lastVisibleDocument =
+        documentSnapshots.docs[documentSnapshots.docs.length - 1];
+      setLastVisible(lastVisibleDocument);
+    }
+
+    const newPostings = documentSnapshots.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setJobPostings((prevPostings) => [...prevPostings, ...newPostings]);
+    setLoadingJobs(false);
+    setEditMode(false);
+  };
 
   const handleCreateJobPosting = () => {
     navigate("/create-job-posting"); // Assumes you have a route set up for this
@@ -109,11 +148,15 @@ const Profile = () => {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        getPostings(user);
         const userDocRef = doc(firestore, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setUserProfile(userDoc.data());
+          if (userDoc.data()?.userRole === "employee") {
+            fetchJobPostingsForEmployees();
+          } else if (userDoc.data()?.userRole === "employer") {
+            getPostings(user);
+          }
         } else {
           // Handle case where user is authenticated but no profile data is found
         }
@@ -177,6 +220,26 @@ const Profile = () => {
               </JobList>
             </>
           )}
+        {!editMode &&
+          userProfile?.userRole === "employee" &&
+          jobPostings?.length > 0 && (
+            <>
+              <JobList>
+                {jobPostings.map((posting) => (
+                  <JobPosting key={posting.id}>
+                    <JobTitle>{posting.title}</JobTitle>
+                    <JobDescription>{posting.description}</JobDescription>
+                  </JobPosting>
+                ))}
+              </JobList>
+              <Button
+                onClick={fetchJobPostingsForEmployees}
+                disabled={!hasMore || loadingJobs}
+              >
+                {loadingJobs ? "Loading..." : !hasMore ? "End" : "Load More"}
+              </Button>
+            </>
+          )}
       </Container>
     );
   }
@@ -185,7 +248,7 @@ const Profile = () => {
       <SignOutButton />
       <br />
       <br />
-      <h1>Include your data mexicans 😈</h1>
+      <h1>Create your profile </h1>
 
       <Form onSubmit={handleSubmit}>
         <Form.Group className="mb-3" controlId="userName">

@@ -40,6 +40,15 @@ function App() {
     <div>
       Find reputable and good work
       <AuthDisplay />
+      <div
+        style={{
+          fontSize: "75%",
+          visibility: "visible",
+          // visibility:'hidden'
+        }}
+      >
+        ✨ created by rox the AI cofounder
+      </div>
     </div>
   );
 }

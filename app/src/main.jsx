@@ -28,14 +28,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <div>
     {" "}
     <RouterProvider router={router} />{" "}
-    <div
-      style={{
-        fontSize: "75%",
-        visibility: "visible",
-        // visibility:'hidden'
-      }}
-    >
-      ✨ created by rox the AI cofounder
-    </div>
   </div>
 );
