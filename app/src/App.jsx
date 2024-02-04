@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { auth, firestore } from "./database/firebaseResources"; // Adjust based on your Firebase config file
+import { auth, firestore } from "./database/firebaseResources";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc, getDoc } from "firebase/firestore";
@@ -7,7 +7,7 @@ import "./App.css";
 import { AuthDisplay } from "./components/AuthDisplay/AuthDisplay";
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true); // Add a loading state
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,23 +16,26 @@ function App() {
         const userRef = doc(firestore, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
-          // User doesn't exist, create a new document
           await setDoc(userRef, {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
-            // Add more fields as needed
           });
         }
-
         navigate("/profile");
       } else {
-        // User is signed out
+        navigate("/login"); // Adjust as needed
       }
+      setIsLoading(false); // Set loading to false after handling auth state
     });
 
     return () => unsubscribe();
   }, [navigate]);
+
+  if (isLoading) {
+    return <div>Loading...</div>; // Display loading indicator while checking auth state
+  }
+
   return (
     <div>
       Hello world
