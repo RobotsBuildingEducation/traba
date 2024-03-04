@@ -47,7 +47,10 @@ function App() {
           // visibility:'hidden'
         }}
       >
-        ✨ created by rox the AI cofounder
+        ✨ created by{" "}
+        <a target="_blank" href="https://robotsbuildingeducation.com">
+          rox the AI cofounder
+        </a>
       </div>
     </div>
   );
